@@ -23,6 +23,14 @@ merged = blocks.merge(data, left_on='GEOID', right_on='GEOID_new', how='left')
 # Filter out invalid income values
 merged = merged[merged['Median Household Income'] > 0]
 
+def style_function(feature):
+    return {
+        'fillColor': '#ffaf00',
+        'color': 'blue',
+        'weight': 2,
+        'fillOpacity': 0.5,
+        'dashArray': '5, 5'
+    }
 
 # Create the map centered on the data
 m = folium.Map(location=[merged['geometry'].centroid.y.mean(), 
@@ -35,7 +43,7 @@ tooltip_aliases = [field.replace('_', ' ').title() + ':' for field in tooltip_fi
 # Add block groups to the map with interactivity
 folium.GeoJson(merged, 
                tooltip=folium.GeoJsonTooltip(fields=tooltip_fields.tolist(), aliases=tooltip_aliases, localize=True),
-               style_function=lambda x: {'fillColor': '#ffaf00', 'color': '#00ff22', 'weight': 0.1},
+               style_function=style_function,
                smooth_factor=2.0).add_to(m)
 
 # Add layer control to toggle roads and landmarks

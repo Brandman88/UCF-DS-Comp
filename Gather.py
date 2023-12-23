@@ -45,11 +45,33 @@ florida_code = "12"
 #This variable contains the URL for making an API request to retrieve data for specific variables at the county level in Florida. It includes parameters like get=NAME, 
 # which indicates that you want to retrieve the county names, for=county:*, which specifies that you want data at the county level, 
 # and in=state:12, which restricts the query to Florida. It also includes an API key for authentication.
+
+'''Currently, our branches are located in 6 counties, but our charter includes over 20 counties. 
+The counties include Orange, Osceola, Seminole, Lake, Alachua, Brevard, Duval, Flagler, Hernando, Highlands, Hillsborough, 
+Indian River, Manatee, Marion, Martin, Okeechobee, Pasco, Pinellas, Polk, Sarasota, St. Johns, St. Lucie, Sumter, and Volusia County. 
+Also, we are not legally restricted to building within these 24 counties. We can build a branch anywhere we want, 
+but in order for people to join, the people must be able to meet certain qualifications. 
+These qualifications are related to Addition Financials field of membership which is based on a community charter. 
+Specifically, anyone who lives, works, worships, attends school or vocational training, or is an alum of any college, university, or educational institution 
+in the aforementioned counties. Therefore, it only makes sense to build within our chartered counties. 
+Regarding further expansions outside of the listed counties (if needed), we could always explore filing for an expansion with the Florida Office of Financial Regulation.'''
+# List of county names
+county_names = [
+    "Orange", "Osceola", "Seminole", "Lake", "Alachua", "Brevard", "Duval", "Flagler", "Hernando", 
+    "Highlands", "Hillsborough", "Indian River", "Manatee", "Marion", "Martin", "Okeechobee", "Pasco", 
+    "Pinellas", "Polk", "Sarasota", "St. Johns", "St. Lucie", "Sumter", "Volusia"
+]
+
+# Append " County" to each name and store in a new list
+specific_counties = [name + " County" for name in county_names]
+specific_counties
+
 county_url = f"{base_url}?get=NAME&for=county:*&in=state:{florida_code}&key=39a6ddc087c074ec8657a6df51e84575df9809f1"
 county_response = requests.get(county_url)
 #county response is list that gives you all of the counties, their names the state, and county codes
 #[["NAME","state","county"],["Alachua County, Florida","12","001"],["Baker County, Florida","12","003"],...]
-counties = [item[2] for item in county_response.json()[1:]]
+counties_data = county_response.json()[1:]
+counties = [item[2] for item in counties_data if any(specific_county in item[0] for specific_county in specific_counties)]
 
 file_path = 'data.csv'
 with open(file_path, 'w', newline='') as csvfile:

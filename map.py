@@ -301,7 +301,7 @@ if not filtered_blocks_geo.empty:
         """
 
     # Add FastMarkerCluster to the map
-    m.add_child(FastMarkerCluster(data=landmarks_locations, callback=callback))
+    m.add_child(FastMarkerCluster(data=landmarks_locations, callback=callback, name="Landmarks", show=False))
 
     """
         FastMarkerCluster(data=landmarks_points_list, name="Landmarks", show=False).add_to(m)

@@ -1,6 +1,7 @@
 import geopandas as gpd
 import pandas as pd
 import folium
+from folium import FeatureGroup
 from folium.plugins import FastMarkerCluster
 
 # Define style functions
@@ -42,9 +43,6 @@ def cousub_style_function(feature):
     }
 
 
-# Custom callback function to create popups
-def callback(row):
-    return ('<strong>Name:</strong> {name}').format(name=row[2])
 
 
 
@@ -109,6 +107,9 @@ print("Cousub columns:", cousub_columns)
 print("PointLM columns:", pointlm_columns)
 
 
+# Filter out entries where the 'FULLNAME' column is null
+pointlm = pointlm[pointlm['FULLNAME'].notnull()]
+
 
 # Reproject the geometries to the projected CRS for accurate calculations
 blocks_projected = blocks.to_crs(projected_crs)
@@ -117,6 +118,7 @@ places_projected = places.to_crs(projected_crs)
 pointlm_projected = pointlm.to_crs(projected_crs)
 tracts_projected = tracts.to_crs(projected_crs)
 cousub_projected = cousub.to_crs(projected_crs)
+
 
 # Create spatial indexes for faster querying
 blocks_index = blocks_projected.sindex
@@ -145,9 +147,14 @@ merged_blocks_projected = blocks_projected.merge(data, left_on='GEOID', right_on
 # Filter out invalid income values or other criteria for your block groups
 filtered_blocks_projected = merged_blocks_projected[merged_blocks_projected['Median Household Income'] > 0]
 
+
+
 # Create a buffer around your block groups (adjust the distance as needed) in the projected CRS
 buffer_distance = 0.03  # Adjust based on your needs and units of the projected CRS
 block_buffer = filtered_blocks_projected['geometry'].buffer(buffer_distance)
+
+
+
 
 # Create a unified geometry of all buffers (a single multipolygon)
 unified_buffer = block_buffer.unary_union
@@ -168,15 +175,30 @@ filtered_pointlm_geo = filtered_pointlm_projected.to_crs('EPSG:4269')
 filtered_tracts_geo = filtered_tracts_projected.to_crs('EPSG:4269')
 filtered_cousub_geo = filtered_cousub_projected.to_crs('EPSG:4269')
 
-# Convert the GeoDataFrame of filtered places into a list of [lat, lon] pairs
+# Print the total number of landmarks before filtering
+print("Total landmarks before filtering:", len(pointlm))
 
 
-landmarks_points = filtered_pointlm_geo[['geometry']].copy()
-landmarks_points['geometry'] = landmarks_points['geometry'].apply(lambda geom: [geom.y, geom.x])
-landmarks_points_list = landmarks_points['geometry'].tolist()
+
+
+#landmarks_points = filtered_pointlm_geo[['geometry']].copy()
+#landmarks_points['geometry'] = landmarks_points['geometry'].apply(lambda geom: [geom.y, geom.x])
+#landmarks_points_list = landmarks_points['geometry'].tolist()
+
+
+
+
+
+landmarks_points_list = [
+    [row['geometry'].y, row['geometry'].x] for idx, row in filtered_pointlm_geo.iterrows() if pd.notnull(row['FULLNAME']) and row['geometry'] is not None
+]
 #landmarks_points_list = filtered_pointlm_geo.apply( lambda row: [row.geometry.y, row.geometry.x, row['FULLNAME']], axis=1).tolist()
 
+# Initialize an empty feature group for the landmarks
+landmark_group = FeatureGroup(name="Landmarks")
 
+# Print the total number of landmarks after filtering
+print("Total landmarks after filtering:", len(landmarks_points_list))
 
 
 if not filtered_blocks_geo.empty:
@@ -235,7 +257,7 @@ if not filtered_blocks_geo.empty:
     # Add block groups to the map with interactivity
     folium.GeoJson(
         filtered_blocks_geo,
-        style_function=lambda x: {'fillColor': '#ffaf00', 'color': 'blue', 'weight': 2, 'fillOpacity': 0.5, 'dashArray': '5, 5'},
+        style_function=block_style_function,
         tooltip=folium.GeoJsonTooltip(fields=tooltip_fields, aliases=tooltip_aliases, localize=True),
         name="Block Groups",  # Custom name for the block groups layer
         show=False
@@ -253,8 +275,38 @@ if not filtered_blocks_geo.empty:
             )
         ).add_to(m)
 
+    landmarks_locations = []
+    popups = []
+    
     if not filtered_pointlm_geo.empty:
+        for idx, row in filtered_pointlm_geo.iterrows():
+            if pd.notnull(row['FULLNAME']) and row['geometry'] is not None:
+                lat, lon = row['geometry'].y, row['geometry'].x
+                popup_content = f"""
+            <div>
+                <strong>Name:</strong> {row['FULLNAME']}<br>
+                <strong>Latitude:</strong> {lat}<br>
+                <strong>Longitude:</strong> {lon}
+            </div>
+            """
+                landmarks_locations.append([lat, lon, popup_content])
+
+            # Custom callback function for marker creation
+        callback = """
+        function (row) {
+        var marker = L.marker(new L.LatLng(row[0], row[1]));
+        marker.bindPopup(row[2]);
+        return marker;
+        };
+        """
+
+    # Add FastMarkerCluster to the map
+    m.add_child(FastMarkerCluster(data=landmarks_locations, callback=callback))
+
+    """
         FastMarkerCluster(data=landmarks_points_list, name="Landmarks", show=False).add_to(m)
+    """
+        
     '''
    if not filtered_pointlm_geo.empty:
         FastMarkerCluster(

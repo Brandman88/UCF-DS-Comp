@@ -109,6 +109,7 @@ print("PointLM columns:", pointlm_columns)
 
 # Filter out entries where the 'FULLNAME' column is null
 pointlm = pointlm[pointlm['FULLNAME'].notnull()]
+pointlm = pointlm[pointlm['geometry'].notnull()]
 
 
 # Reproject the geometries to the projected CRS for accurate calculations
@@ -179,19 +180,13 @@ filtered_cousub_geo = filtered_cousub_projected.to_crs('EPSG:4269')
 print("Total landmarks before filtering:", len(pointlm))
 
 
-
+print("Pointlm:",pointlm)
 
 #landmarks_points = filtered_pointlm_geo[['geometry']].copy()
 #landmarks_points['geometry'] = landmarks_points['geometry'].apply(lambda geom: [geom.y, geom.x])
 #landmarks_points_list = landmarks_points['geometry'].tolist()
 
-
-
-
-
-landmarks_points_list = [
-    [row['geometry'].y, row['geometry'].x] for idx, row in filtered_pointlm_geo.iterrows() if pd.notnull(row['FULLNAME']) and row['geometry'] is not None
-]
+landmarks_points_list = [[row['geometry'].y, row['geometry'].x] for idx, row in filtered_pointlm_geo.iterrows() if pd.notnull(row['FULLNAME']) and row['geometry'] is not None]
 #landmarks_points_list = filtered_pointlm_geo.apply( lambda row: [row.geometry.y, row.geometry.x, row['FULLNAME']], axis=1).tolist()
 
 # Initialize an empty feature group for the landmarks
